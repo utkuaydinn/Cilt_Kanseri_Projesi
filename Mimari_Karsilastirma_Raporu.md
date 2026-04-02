@@ -26,7 +26,7 @@ Projenin ilk eğitim aşaması "Bilgisayarlı Görme" alanındaki devrim niteli�
 Apple Silicon M3 mimarisinin "Unified Memory (Birleşik Bellek)" ve "Neural Engine" potansiyelini fan gücü olmadan (Air serisinde) en uç noktaya taşımak, ancak aynı zamanda daha yüksek hassasiyet (% Accuracy) almak amacıyla projenin ana mimarisi Google imzalı EfficientNet serisine (Small varyasyonu) yükseltilmiştir.
 
 ### A. Yeni Mimariye Geçiş Gerekçelerimiz
-Neden 50 katmanlı dev efsane ResNet yerine, güncel EfficientNet-V2 modeline geçme kararı aldık? Bunun arkasında yatan akademik ve donanımsal 3 ana neden mevcuttur:
+Neden 50 katmanlı dev efsane ResNet yerine, güncel EfficientNet-V2 modeline geçme kararı aldık? Bunun arkasında yatan akademik ve donanımsal 3 ana neden mevcuttur:kskdakdsakd
 
 1. **Ölçeklendirme Mantığındaki Evrim (Compound Scaling):** ResNet gibi geleneksel modeller başarıyı artırmak için sadece "Katman (Layer) Ekleyerek" derinleşir. EfficientNet ise Görüntü Çözünürlüğünü, Süzgeç Genişliğini ve Derinliği matematiksel olarak **orantılı (Compound) şekilde** aynı anda büyütür. Bu, eski modellere göre çok daha akıllı ama "kilo almayan" bir öğrenme yapısı sunar.
 2. **Apple M3 ve Termal Optimizasyon:** Proje bilgisayarlarının aktif fan sisteminin olmaması aşırı ısınma altında frekans düşüşüne (Thermal Throttling) sebep olabilmektedir. EfficientNet-V2-S (Small), sadece 21 Milyon parametre barındırarak **%20 daha küçük bir dosya** olmasına rağmen, ResNet-101'e rakip olabilecek oranda Tıp (Hastalık bulma) başarı yüzdesi sağlar. İşlemci ve RAM sömürüsünü minimuma çekmesi en büyük tercih sebebimiz olmuştur.
