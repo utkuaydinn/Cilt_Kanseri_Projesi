@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Mac OS
+.DS_Store
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Virtual Environments
+venv/
+.venv/
+env/
+.env/
+
+# Deep Learning / Model Weights
+*.pth
+*.pt
+*.onnx
+
+# Data (Veri setleri genelde GitHub'a yüklenmeyecek kadar büyüktür)
+dataset/
+*.csv
+
+# Outputs (Geçici loglar veya test grafikleri)
+# İsterseniz *.png yi silebilirsiniz eğer grafikleri de GitHub'da saklamak isterseniz!
+# *.png
+# *.txt 
