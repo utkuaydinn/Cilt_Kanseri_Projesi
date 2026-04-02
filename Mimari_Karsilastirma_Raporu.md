@@ -7,10 +7,10 @@ Bu rapor, proje kapsamında cilt kanseri tespiti amacıyla kullanılan **(ResNet
 ## 1. İlk Model: ResNet-50 (Residual Networks) Modeli
 Projenin ilk eğitim aşaması "Bilgisayarlı Görme" alanındaki devrim niteliğindeki 2015 çıkışlı ResNet-50 ile gerçekleştirilmiştir.
 
-### A. Teknik Özellikler
+### A. Teknik Özellikler Merhaba
 *   **Mimari Derinlik:** 50 Konvolüsyonel (Convolutional) Katman
 *   **Ağırlıklar:** Yaklaşık 25.5 Milyon eğitim parametresi (~98 MB model boyutu)
-*   **Temel Gücü (Skip Connections):** Derinleşen sinir ağlarında yaşanan "Gradyan Kaybı (Vanishing Gradient)" problemini, katmanları birbirine bağlayan "Kısa Yol (Bypass)" mantığıyla çözerek veri akışını korumasıdır.
+*   **Temel Gücü (Skip Connections):** Derinleşen sinir ağlarında yaşanan "Gradyan Kaybı (Vanishing Gradient)" problemini, katmanları birbirine bağlayan "Kısa Yol (Bypass)" mantığıyla çözerek veri akışını korumasıdır. 
 *   **Kayıp Fonksiyonu (Ceza):** Aşırı sınıf eşitsizliğini (%98 iyi huylu, %2 kanserli) engellemek için kodumuza önce "Ağırlıklı BCE Loss", ardından %50'lik ROC dengesi gözeten "Focal Loss (G=2.0, A=0.85)" modülü programlanmış ve çok yüksek kanser bulma başarısına ulaşılmıştır.
 
 ### B. İlk Aşama Performans Sonuçları (ResNet-50)
