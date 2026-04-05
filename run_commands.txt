@@ -1,0 +1,44 @@
+# Cilt Kanseri Tespiti - Hızlı Çalıştırma Komutları
+
+Bu dosyadaki komutları kopyalayıp terminaline (PowerShell veya CMD) yapıştırarak eğitimleri başlatabilirsin.
+
+## 1. Test ve Hızlı Kontrol (1 Dönem)
+Sistemin çalıştığını ve her şeyin (GPU, Klasörleme vb.) yolunda olduğunu görmek için:
+
+**EfficientNet Test (Hızlı):**
+```bash
+python main.py --model efficientnet --batch 32 --epochs 1
+```
+
+**ResNet-50 Test (Hızlı):**
+```bash
+python main.py --model resnet --batch 16 --epochs 1
+```
+
+---
+
+## 2. Tam Eğitim (5 Dönem - Önerilen)
+Sunumda kullanacağın asıl verileri üretmek için:
+
+**EfficientNet Tam Eğitim:**
+```bash
+python main.py --model efficientnet --batch 32 --epochs 5
+```
+
+**ResNet-50 Tam Eğitim:**
+```bash
+python main.py --model resnet --batch 16 --epochs 5
+```
+
+---
+
+## 3. Parametre Önerileri (VRAM Ayarı)
+Eğer "CUDA out of memory" (Ekran kartı belleği yetmedi) hatası alırsan, şu ayarları dene:
+
+- **EfficientNet için:** `--batch 16`
+- **ResNet için:** `--batch 8` veya `--batch 4`
+
+---
+
+> [!NOTE]
+> Her çalıştırmadan sonra `runs/` klasörüne giderek oluşan yeni klasördeki `results.json` ve grafikleri kontrol etmeyi unutma!

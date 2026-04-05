@@ -28,3 +28,22 @@ dataset/
 # İsterseniz *.png yi silebilirsiniz eğer grafikleri de GitHub'da saklamak isterseniz!
 # *.png
 # *.txt 
+
+# LaTeX Temporary Files (Derleme geçici dosyaları)
+*.aux
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.fls
+*.fdb_latexmk
+*.bbl
+*.blg
+*.lot
+*.lof
+
+# PDF Output (Opsiyonel - derlenen PDF'ler)
+# *.pdf
+
+# Temporary files created during this session
+pdf_content.txt
