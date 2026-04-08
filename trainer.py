@@ -97,11 +97,11 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, n
         epoch_end_time = time.time()
         epoch_duration = epoch_end_time - epoch_start_time
         history['epoch_times'].append(epoch_duration)
-        print(f'Epoch Süresi: {epoch_duration:.2f}s\n')
+        print(f'Epoch Suresi: {epoch_duration:.2f}s\n')
 
     total_time = time.time() - total_start_time
-    print(f'Eğitim Tamamlandı! Toplam Süre: {total_time//60:.0f}m {total_time%60:.0f}s')
-    print(f'En İyi Validation AUC: {best_val_auc:4f}')
+    print(f'Egitim Tamamlandi! Toplam Sure: {total_time//60:.0f}m {total_time%60:.0f}s')
+    print(f'En Iyi Validation AUC: {best_val_auc:4f}')
 
     model.load_state_dict(best_model_wts)
     return model, history
@@ -129,6 +129,5 @@ def plot_history(history, save_path='training_history.png'):
     
     plt.tight_layout()
     plt.savefig(save_path)
-    print(f"Eğitim grafikleri '{save_path}' olarak diske kaydedildi.")
+    print(f"Egitim grafikleri '{save_path}' olarak diske kaydedildi.")
     plt.close()
-

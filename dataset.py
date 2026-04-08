@@ -19,10 +19,7 @@ class SkinCancerDataset(Dataset):
         img_name = self.dataframe.iloc[idx]['image_name'] + '.jpg'
         img_path = os.path.join(self.image_dir, img_name)
         
-        # Görüntüyü RGB modunda yükle
         image = Image.open(img_path).convert('RGB')
-        
-        # Etiketi (target) al (0 veya 1)
         label = self.dataframe.iloc[idx]['target']
         
         if self.transform:
@@ -31,19 +28,14 @@ class SkinCancerDataset(Dataset):
         return image, torch.tensor(label, dtype=torch.float32)
 
 def get_dataloaders(csv_path, img_dir, batch_size=32, img_size=224, test_size=0.2):
-    # Veriyi oku
     df = pd.read_csv(csv_path)
-    
-    # NaN target veya image_name varsa düşür
     df = df.dropna(subset=['target', 'image_name'])
     
-    # Stratified Split: Kanserli ve iyi huylu vaka oranını koruyarak veriyi böl
     train_df, val_df = train_test_split(df, test_size=test_size, stratify=df['target'], random_state=42)
     
     train_df = train_df.reset_index(drop=True)
     val_df = val_df.reset_index(drop=True)
 
-    # Data Augmentation (Eğitim için) - Sınıf dengesizliğinde kritik
     train_transform = transforms.Compose([
         transforms.Resize((img_size, img_size)),
         transforms.RandomHorizontalFlip(),
@@ -51,11 +43,10 @@ def get_dataloaders(csv_path, img_dir, batch_size=32, img_size=224, test_size=0.
         transforms.RandomRotation(20),
         transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],  # ImageNet Standartları
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
                              std=[0.229, 0.224, 0.225])
     ])
     
-    # Validation için sadece ölçeklendirme ve normalize
     val_transform = transforms.Compose([
         transforms.Resize((img_size, img_size)),
         transforms.ToTensor(),
@@ -63,12 +54,9 @@ def get_dataloaders(csv_path, img_dir, batch_size=32, img_size=224, test_size=0.
                              std=[0.229, 0.224, 0.225])
     ])
     
-    # Dataset'leri oluştur
     train_dataset = SkinCancerDataset(train_df, img_dir, transform=train_transform)
     val_dataset = SkinCancerDataset(val_df, img_dir, transform=val_transform)
     
-    # Ağır sınıf dengesizliği için WeightedRandomSampler oluşturma
-    # Sınıf ağırlıklarını hesapla
     class_counts = train_df['target'].value_counts().sort_index()
     count_0 = class_counts.get(0, 1)
     count_1 = class_counts.get(1, 1)
@@ -76,7 +64,6 @@ def get_dataloaders(csv_path, img_dir, batch_size=32, img_size=224, test_size=0.
     weight_0 = 1.0 / count_0
     weight_1 = 1.0 / count_1
     
-    # Her bir örnek için ağırlık ata
     sample_weights = [weight_0 if label == 0 else weight_1 for label in train_df['target']]
     
     sampler = WeightedRandomSampler(
@@ -85,7 +72,6 @@ def get_dataloaders(csv_path, img_dir, batch_size=32, img_size=224, test_size=0.
         replacement=True
     )
     
-    # Sampler kullandığımızda shuffle=False olmalıdır
     train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=sampler, num_workers=0)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
     

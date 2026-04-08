@@ -12,7 +12,7 @@ def evaluate_model():
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     print(f"Cihaz: {device}")
 
-    print("Doğrulama (Test) verileri yükleniyor...")
+    print("Dogrulama verileri yukleniyor...")
     _, val_loader, _, val_df = get_dataloaders(
         csv_path='dataset/train.csv', 
         img_dir='dataset/train', 
@@ -29,7 +29,7 @@ def evaluate_model():
     all_probs = []
     all_labels = []
 
-    print("Tahminler ve yüzdelik grafikleri çiziliyor...")
+    print("Tahminler hesaplaniyor...")
     with torch.no_grad():
         for inputs, labels in val_loader:
             inputs = inputs.to(device)
@@ -42,27 +42,25 @@ def evaluate_model():
             all_probs.extend(probs)
             all_labels.extend(labels.cpu().numpy())
 
-    # --- 1. ROC CURVE GRAFİĞİ (BAŞARI EĞRİSİ) ---
     fpr, tpr, thresholds = roc_curve(all_labels, all_probs)
     roc_auc = auc(fpr, tpr)
     
     plt.figure(figsize=(8, 6))
-    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC Eğrisi (AUC Alanı = %{roc_auc*100:.1f})')
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC Egrisi (AUC = %{roc_auc*100:.1f})')
     plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
-    plt.xlabel('Yanlış Alarm Oranı (False Positive Rate)')
-    plt.ylabel('Kanseri Yakalama Oranı (True Positive Rate)')
+    plt.xlabel('Yanlis Alarm Orani (False Positive Rate)')
+    plt.ylabel('Kanseri Yakalama Orani (True Positive Rate)')
     
     best_preds = (np.array(all_probs) >= 0.50).astype(int)
     best_acc = accuracy_score(all_labels, best_preds) * 100
-    plt.title(f'Alıcı İşletim Karakteristiği (ROC) Eğrisi - %{best_acc:.1f} Genel Doğruluk\nEfficientNet-V2-S Gerçek Başarı Grafiği')
+    plt.title(f'ROC Egrisi - %{best_acc:.1f} Dogruluk')
     
     plt.legend(loc="lower right")
     plt.savefig('roc_curve.png')
     plt.close()
 
-    # --- 2. MULTIPLE THRESHOLD CONFUSION MATRICES ---
     thresholds_to_test = [0.5, 0.75, 0.85]
     
     for thresh in thresholds_to_test:
@@ -70,29 +68,28 @@ def evaluate_model():
         cm = confusion_matrix(all_labels, preds)
         accuracy_val = accuracy_score(all_labels, preds) * 100
         
-        # Sonuçları terminale de basalım ki kullanıcı görebilsin
         fp = cm[0,1]
         tp = cm[1,1]
         fn = cm[1,0]
         tn = cm[0,0]
-        print(f"Eşik değer %{int(thresh*100)} => Doğruluk: %{accuracy_val:.2f} | TP (Bulunan Kanser): {tp} | FP (Yanlış Alarm): {fp} | FN (Kaçan): {fn}")
+        print(f"Esik %{int(thresh*100)} => Dogruluk: %{accuracy_val:.2f} | TP: {tp} | FP: {fp} | FN: {fn}")
         
         plt.figure(figsize=(8, 6))
         sns.heatmap(cm, annot=True, fmt='d', cmap='Reds', 
-                    xticklabels=["Tahmin: İyi", "Tahmin: Kanser"], 
-                    yticklabels=["Gerçek: İyi", "Gerçek: Kanser"])
-        plt.title(f"Karmaşıklık Matrisi (Eşik: %{int(thresh*100)}) | Doğruluk: %{accuracy_val:.1f}")
-        plt.ylabel('Gerçek Değerler')
-        plt.xlabel('Tahmin Edilen Değerler')
+                    xticklabels=["Tahmin: Iyi", "Tahmin: Kanser"], 
+                    yticklabels=["Gercek: Iyi", "Gercek: Kanser"])
+        plt.title(f"Karisiklik Matrisi (Esik: %{int(thresh*100)}) | Dogruluk: %{accuracy_val:.1f}")
+        plt.ylabel('Gercek Degerler')
+        plt.xlabel('Tahmin Edilen Degerler')
         plt.tight_layout()
         plt.savefig(f'confusion_matrix_{int(thresh*100)}.png')
         plt.close()
 
-    print("YENİ GÖRSELLER ÇIKARTILDI:")
-    print("-> roc_curve.png (En önemli bilimsel başarım grafiğiniz, %92 doğrulukla orantılı auc)")
-    print("-> confusion_matrix_50.png (Standart eşik matrisiniz)")
-    print("-> confusion_matrix_75.png (Daha az yanlış alarm veren katı eşik)")
-    print("-> confusion_matrix_85.png (En katı kanser teşhisi eşiği)")
+    print("Degerlendirme tamamlandi:")
+    print("-> roc_curve.png")
+    print("-> confusion_matrix_50.png")
+    print("-> confusion_matrix_75.png")
+    print("-> confusion_matrix_85.png")
 
 if __name__ == "__main__":
     evaluate_model()
