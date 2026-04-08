@@ -1,0 +1,351 @@
+\documentclass[12pt,a4paper]{article}
+
+% Paketler
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[turkish]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{cite}
+\usepackage{setspace}
+\usepackage{url}
+
+% Sayfa ayarları
+\geometry{margin=2.5cm}
+\onehalfspacing
+
+% Başlık bilgileri
+\title{\textbf{EfficientNet-V2-S Kullanarak İkili Cilt Lezyonu Sınıflandırması:}\\\textbf{ISIC 2020 Veri Seti Üzerinde Transfer Öğrenme Yaklaşımı}}
+\author{
+\textbf{Utku Aydın}\\
+Öğrenci No: 6053037\\
+6053037@bakircay.edu.tr\\
+\\
+\textbf{Utku Dişçi}\\
+Öğrenci No: 6053041\\
+6053041@bakircay.edu.tr\\
+\\
+\textbf{Danışman:}\\
+Dr. Öğr. Üyesi Nihan Özbaltan\\
+Bilgisayar Mühendisliği Bölümü\\
+\\
+İzmir Bakırçay Üniversitesi\\
+Mühendislik ve Mimarlık Fakültesi\\
+Bilgisayar Mühendisliği Bölümü\\
+Yapay Zeka ve Derin Öğrenme Dersi
+}
+\date{Şubat 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent\textbf{Anahtar Kelimeler:} Cilt lezyonu sınıflandırma, melanom tespiti, dermoskopi, evrişimli sinir ağları, transfer öğrenme, ISIC 2020 veri seti, ikili sınıflandırma, focal loss, sınıf dengesizliği
+
+\vspace{0.5cm}
+
+Cilt kanseri, özellikle metastatik potansiyeli nedeniyle melanom agresif bir hastalık olması nedeniyle önemli bir küresel sağlık sorunudur. Erken teşhis, sağkalım oranlarını önemli ölçüde iyileştirir---erken evrede yaklaşık \%99 iken ileri evrelerde sadece \%20---bu nedenle doğru sınıflandırma sistemleri hayati önem taşır.
+
+Bu çalışma, dermoskopik görüntüleri kullanarak otomatik \textbf{ikili cilt lezyonu sınıflandırması} için bir derin öğrenme çerçevesi sunmaktadır. ISIC 2020 Yarışması Veri Setini (JPEG Melanoma 256$\times$256) kullanıyoruz; bu veri seti iyi huylu ve habis (melanom) olmak üzere iki tanı kategorisinde 33.126 görüntü içermektedir. Veri seti ciddi sınıf dengesizliği sergilemektedir: iyi huylu lezyonlar yaklaşık olarak örneklerin \%98,2'sini oluştururken habis melanomlar sadece \%1,8'ini temsil etmektedir.
+
+Bu zorlukları ele almak için, ImageNet üzerinde önceden eğitilmiş \textbf{EfficientNet-V2-S} mimarisini \textbf{focal loss optimizasyonu} ve \textbf{sınıf ağırlıklı rastgele örnekleme} ile birleştiren transfer öğrenme kullanıyoruz. Yaklaşımımız, kaynak kısıtlı cihazlarda verimli eğitim için Apple Silicon GPU hızlandırmasını (Metal Performance Shaders) kullanmaktadır. Geliştirilen sistem, verimli ön tarama sağlayan ve dermatolojik uygulamada teşhis değişkenliğini azaltan klinik bir karar destek aracı olarak potansiyel göstermektedir.
+\end{abstract}
+
+\newpage
+
+\section{Giriş}
+
+\subsection{Konuya Genel Giriş}
+
+Cilt kanseri, çeşitli popülasyonlarda insidans oranları artmaya devam eden dünya genelinde en yaygın malignitelerden biridir. Çeşitli türler arasında melanom, uzak organlara metastaz yapma eğilimi nedeniyle özellikle tehlikeli olarak öne çıkmaktadır. Prognoz, tespit zamanına bağlı olarak dramatik şekilde farklılık gösterir: erken evre melanomda beş yıllık sağkalım oranı yaklaşık \%99 iken, metastazlı ileri evre hastalıkta bu oran yaklaşık \%20'ye düşmektedir~\cite{esteva2017}.
+
+Halihazırda dermatologlar, ABCD kriterlerini (asimetri, sınır düzensizliği, renk değişimi, çap) kullanarak pigmentli lezyonların görsel muayenesi yoluyla öncelikli olarak cilt kanseri teşhisi koymaktadır. Ancak bu yaklaşım doğası gereği özneldir ve deneyimli klinisyenler arasında bile önemli gözlemci içi değişkenliğe açıktır. Bu sınırlamalar, daha objektif ve tutarlı değerlendirmeler sağlayabilen otomatik teşhis sistemlerine yönelik artan araştırmaları teşvik etmiştir.
+
+\subsection{Literatür Taraması}
+
+Derin öğrenme yöntemleri, son yıllarda cilt lezyonu analizi için önemli ölçüde ilgi görmüştür. \textit{Nature}'da yayınlanan bir dönüm noktası çalışmasında Esteva ve arkadaşları~\cite{esteva2017}, dermoskopik görüntüler üzerinde uçtan uca eğitilmiş tek bir CNN'nin 757 cilt hastalığı sınıfında dermatolog seviyesinde sınıflandırma doğruluğu elde edebileceğini göstermiştir. Model, ikili sınıflandırma görevlerinde 21 diplomalı dermatologla karşılaştırılabilir performans sergilemiştir.
+
+Sonrasında Haenssle ve arkadaşları~\cite{haenssle2018}, bir CNN'yi 58 dermatologla karşılaştıran prospektif bir okuyucu çalışması yürütmüştür. Derin öğrenme sistemi, hem daha az deneyimli (\%71,3, $p < 0,01$) hem de daha deneyimli (\%75,7, $p < 0,01$) dermatologlara kıyasla üstün spesifite (\%82,5) elde etmiştir. Kapsamlı bir sistematik derlemede Brinker ve arkadaşları~\cite{brinker2019}, CNN tabanlı cilt lezyonu sınıflandırma araştırmalarını analiz ederek, insan uzmanlara kıyasla üstün veya eşdeğer performansın tutarlı kalıplarını bulmuştur.
+
+Son gelişmeler mimari iyileştirmelere odaklanmıştır. Tan ve Le~\cite{tan2019}, EfficientNet'i tanıtarak ağ derinliğini, genişliğini ve çözünürlüğünü tekdüzen ayarlamak için bileşik ölçeklendirmeyi kullanmıştır. Sonraki EfficientNet-V2~\cite{tan2021}, aşamalı öğrenme ve eğitim hızı için optimize edilmiş sinir mimarisi araması ile eğitim hızını ve parametre verimliliğini daha da iyileştirmiştir. Paralel olarak Lin ve arkadaşları~\cite{lin2017}, kolay örnekleri ağırlıklandırarak ve zor, yanlış sınıflandırılmış örneklerin üzerine odaklanarak sınıf dengesizliğini ele alan Focal Loss'u önermiştir---şiddetli sınıf dengesizliği olan tıbbi veri setleri için özellikle ilgili bir tekniktir.
+
+\subsection{Araştırma Problemi ve Boşluk}
+
+Umut verici gelişmelere rağmen, bu teknolojilerin yaygın klinik benimsenmesini engelleyen birkaç kritik zorluk bulunmaktadır:
+
+\begin{enumerate}
+    \item \textbf{Şiddetli Sınıf Dengesizliği:} ISIC 2020 veri setinde, iyi huylu lezyonlar tüm görüntülerin \%98'inden fazlasını oluştururken habis melanomlar \%2'den azını oluşturmaktadır. Bu aşırı dengesizlik, standart derin öğrenme optimizasyon stratejileri için önemli zorluklar yaratmaktadır.
+    
+    \item \textbf{Hesaplama Verimliliği:} Birçok son teknoloji modeli, kaynak kısıtlı ortamlardaki klinik ortamlarda dağıtımı sınırlayan önemli hesaplama kaynakları gerektirmektedir.
+    
+    \item \textbf{Kenar Dağıtımı:} Tıbbi görüntüleme görevleri için birleşik bellek mimarisi avantajı sunan Apple Silicon mimarileri (M1/M2/M3) için dermatolojik AI sistemlerini optimize etme konusunda sınırlı araştırma bulunmaktadır.
+\end{enumerate}
+
+\subsection{Önerilen Sisteme Genel Bakış}
+
+Bu çalışma, \textbf{ikili cilt lezyonu sınıflandırması}nda (iyi huylu vs habis) bu zorlukları ele almak için tasarlanmış kapsamlı bir derin öğrenme çerçevesi sunmaktadır. Sistemimiz şunları entegre eder:
+
+\begin{itemize}
+    \item ImageNet önceden eğitimi ile \textbf{EfficientNet-V2-S} mimarisi
+    \item Sınıf dengesizliğini ele almak için \textbf{Focal Loss} optimizasyonu ($\alpha=0,85$, $\gamma=2,0$)
+    \item Dengeli mini-grup oluşturma için \textbf{Ağırlıklı Rastgele Örnekleme}
+    \item Apple Silicon GPU hızlandırma için \textbf{Metal Performance Shaders (MPS)} desteği
+    \item Stratejik \textbf{veri artırma} (döndürme, çevirme, renk jittering)
+\end{itemize}
+
+\subsection{Teknik Altyapı}
+
+\textbf{EfficientNet-V2-S}, hem doğruluğu hem de eğitim hızını optimize eden eğitim-odaklı bir sinir mimarisi araması kullanır. Temel yenilikler şunlardır:
+\begin{itemize}
+    \item Squeeze-and-excitation optimizasyonu ile derinlikli evrişim kullanımı
+    \item Eğitim sırasında görüntü boyutunu kademeli olarak artıran aşamalı öğrenme stratejisi
+    \item Üstün doğrulukla sadece 21 milyon parametre (ResNet-50'den \%20 daha küçük)
+\end{itemize}
+
+\textbf{Çapraz Platform Donanım Hızlandırma:} Çerçeve, maksimum donanım esnekliği ve farklı bilgi işlem ortamlarında verimli dağıtım için tasarlanmıştır:
+\begin{itemize}
+    \item \textbf{Apple Silicon (MPS):} Birleşik bellek mimarisi ile M1/M2/M3 mimarileri için yerel Metal Performance Shaders desteği
+    \item \textbf{NVIDIA GPU (CUDA):} Windows ve Linux sistemlerinde tam CUDA uyumluluğu, ayrık GPU'larda (örn. NVIDIA GTX 3050, RTX serisi) donanım hızlandırma sağlar
+    \item \textbf{Otomatik Cihaz Seçimi:} Mevcut donanıma göre optimal arka ucu (CUDA $\rightarrow$ MPS $\rightarrow$ CPU) otomatik olarak seçen akıllı geri dönüş mekanizması
+\end{itemize}
+
+Bu çift platform desteği, sistemin hem Mac tabanlı sistemlerde (MPS aracılığıyla) hem de NVIDIA GPU donanımlı Windows/Linux iş istasyonlarında donanım hızlandırmadan yararlanabilmesini sağlar; bu da onu çeşitli klinik ve araştırma ortamları için erişilebilir kılar.
+
+\textbf{Focal Loss}, kolay örnekleri ağırlıklandırarak ve zor, yanlış sınıflandırılmış örneklerin üzerine odaklanarak sınıf dengesizliğini ele alır:
+\begin{equation}
+    FL(p_t) = -\alpha_t (1 - p_t)^\gamma \log(p_t)
+\end{equation}
+burada $\alpha_t$ pozitif/negatif örnekleri dengeler ve $\gamma$ odaklanma parametresini kontrol eder.
+
+\subsection{Özgün Katkı}
+
+Bu araştırma üç temel katkı sunmaktadır:
+
+\begin{enumerate}
+    \item Aşırı sınıf dengesizliği (98:2 oranı) ile ikili melanom tespiti için özel olarak optimize edilmiş \textbf{EfficientNet-V2-S} uygulaması.
+    
+    \item Dermatolojik AI için \textbf{Apple Silicon GPU hızlandırması (MPS)} entegrasyonu, pervasız sistemlerde verimli eğitimi göstermektedir.
+    
+    \item Klinik bağlamlarda duyarlılık ve özgüllük arasındaki dengenin analizi için \textbf{çoklu karar eşiklerinin} (\%50, \%75, \%85) kapsamlı değerlendirilmesi.
+\end{enumerate}
+
+\subsection{Makale Yapısına Genel Bakış}
+
+Bu makalenin geri kalanı şu şekilde organize edilmiştir: Bölüm~\ref{sec:dataset} veri seti özelliklerini ve ön işlemeyi açıklamaktadır. Bölüm~\ref{sec:methodology} önerilen mimariyi ve eğitim stratejilerini detaylandırmaktadır. Bölüm~\ref{sec:experiments} deneysel kurulumu ve değerlendirme protokollerini sunmaktadır. Bölüm~\ref{sec:results} deneysel sonuçları sunmaktadır. Bölüm~\ref{sec:discussion} bulguları ve sınırlamaları tartışmaktadır. Son olarak Bölüm~\ref{sec:conclusion} temel bulgularla sonuçlanmaktadır.
+
+\section{Veri Seti Açıklaması}
+\label{sec:dataset}
+
+\subsection{ISIC 2020 Yarışması Veri Seti}
+
+Bu çalışma, Uluslararası Cilt Görüntüleme İşbirliği'nden (ISIC) halka açık olarak erişilebilen \textbf{ISIC 2020 Yarışması Veri Setini}~\cite{rotemberg2021} kullanmaktadır. Veri seti, 2020 cilt lezyonu sınıflandırma yarışması için derlenmiştir ve ikili melanom tespiti için özel olarak tasarlanmış en büyük halka açık dermoskopik görüntü koleksiyonunu temsil etmektedir.
+
+Veri seti iki tanı kategorisinde dağıtılmış \textbf{33.126 dermoskopik görüntü} içermektedir:
+\begin{itemize}
+    \item \textbf{İyi Huylu Lezyonlar} ($\sim$\%98,2): Melanositik nevus, seboreik keratoz ve diğer habis olmayan durumlar dahil
+    \item \textbf{Habis Melanom} ($\sim$\%1,8): Yüksek metastatik potansiyelli melanositlerin habis tümörleri
+\end{itemize}
+
+Veri seti, HAM10000~\cite{tschandl2018}, BCN20000 ve ek klinik kaynaklar dahil olmak üzere birden fazla kurulan depodan veri toplamaktadır. Görüntüler \textbf{256$\times$256 piksel JPEG formatında} sağlanmakta, orijinal yüksek çözünürlüklü dermoskopik çekimlerden önceden işlenmiş ve yeniden boyutlandırılmıştır.
+
+\subsection{Sınıf Dağılımı ve Dengesizlik}
+
+Bu veri setinin önemli bir zorluğu \textbf{aşırı sınıf dengesizliğidir}:
+\begin{itemize}
+    \item İyi Huylu: $\sim$32.500 görüntü (\%98,2)
+    \item Habis: $\sim$600 görüntü (\%1,8)
+\end{itemize}
+
+Bu 54:1 oranı, standart optimizasyon prosedürlerinin çoğunluk sınıfına önyargılı olma eğiliminde olduğu ve klinik olarak kritik azınlık sınıfında (melanom) düşük performans gösterdiği için model eğitimi için önemli zorluklar sunmaktadır.
+
+\subsection{Veri Ön İşleme}
+
+Tüm görüntüler standartlaştırılmış ön işleme görmektedir:
+\begin{enumerate}
+    \item \textbf{Boyutlandırma:} Tüm görüntüler model girişi için 224$\times$224 piksele standartlaştırılır
+    \item \textbf{Normalizasyon:} ImageNet istatistikleri (ortalama=[0,485, 0,456, 0,406], std=[0,229, 0,224, 0,225])
+    \item \textbf{Artırma:} Rastgele yatay/dikey çevirme, döndürme ($\pm$20°), renk jittering
+\end{enumerate}
+
+\subsection{Veri Seti Bölme}
+
+Veri seti, sınıf dağılım oranlarını korumak için \textbf{tabakalı örnekleme} kullanılarak bölünmüştür:
+\begin{itemize}
+    \item Eğitim: \%80
+    \item Doğrulama: \%20
+\end{itemize}
+
+Bu tabakalı yaklaşım, her alt kümenin her iki kategoriden temsili örnekler içermesini sağlayarak güvenilir model değerlendirmesini kolaylaştırır.
+
+\subsection{Etik Hususlar}
+
+ISIC 2020 Yarışması Veri Seti \url{https://challenge.isic-archive.com} adresinden halka açık olarak erişilebilir ve akademik araştırma için uygun koşullar altında dağıtılmaktadır. Veri seti, tıbbi görüntü paylaşımı için etik yönergeler uyarınca hasta mahremiyetini korumak için anonimleştirilmiştir.
+
+\section{Yöntem}
+\label{sec:methodology}
+
+\subsection{Model Mimarisi: EfficientNet-V2-S}
+
+Omurga mimarisi olarak \textbf{EfficientNet-V2-S}'yi (Küçük) kullanıyoruz. Bu model, orijinal EfficientNet'ten bir evrimi temsil eder ve şunları içerir:
+\begin{itemize}
+    \item Hem doğruluğu hem de eğitim hızını optimize eden eğitim-odaklı NAS (Sinir Mimarisi Araması)
+    \item Uyarlanabilir düzenlileştirme ile aşamalı öğrenme
+    \item 21,5 milyon parametre (kompakt ancak güçlü)
+\end{itemize}
+
+Son sınıflandırma katmanı, tek nöron ve sigmoid aktivasyonu ile ikili çıktı için değiştirilmiştir.
+
+\subsection{Sınıf Dengesizliği İle Başa Çıkma}
+
+\subsubsection{Focal Loss}
+Zor örneklerin üzerine odaklanmak için standart BCE kaybını Focal Loss ile değiştiriyoruz:
+\begin{equation}
+    \mathcal{L}_{FL} = -\alpha_t (1 - p_t)^\gamma \log(p_t)
+\end{equation}
+hiperparametreler $\alpha=0,85$ (pozitif sınıf ağırlığı) ve $\gamma=2,0$ (odaklanma parametresi) ile.
+
+\subsubsection{Ağırlıklı Rastgele Örnekleme}
+Eğitim sırasında dengeli mini-gruplar sağlamak için PyTorch'un \texttt{WeightedRandomSampler}'ını uyguluyoruz; burada her iyi huylu örnek $1/n_{iyi\_huylu}$ ağırlığı ve her habis örnek $1/n_{habis}$ ağırlığı alır.
+
+\subsection{Eğitim Yapılandırması}
+
+\begin{itemize}
+    \item \textbf{Optimizasyon:} Ağırlık çürümesi $10^{-4}$ ile AdamW
+    \item \textbf{Öğrenme Oranı:} $10^{-4}$ (sabit)
+    \item \textbf{Grup Boyutu:} 32
+    \item \textbf{Dönem:} Erken durdurma ile 30 (doğrulama AUC'sine göre sabır)
+    \item \textbf{Donanım:} MPS hızlandırma ile Apple Silicon M3 (CPU'ya geri dönüş)
+\end{itemize}
+
+\subsection{Değerlendirme Metrikleri}
+
+Klinik olarak ilgili metrikler kullanıyoruz:
+\begin{itemize}
+    \item \textbf{AUC-ROC:} ROC eğrisinin altındaki alan
+    \item \textbf{Duyarlılık (Recall):} Melanom tespiti için gerçek pozitif oranı
+    \item \textbf{Özgüllük:} İyi huylu sınıflandırma için gerçek negatif oranı
+    \item \textbf{F1-Skoru:} Kesinlik ve duyarlılığın harmonik ortalaması
+    \item \textbf{Karmaşıklık Matrisi:} Çoklu eşiklerde (0,5, 0,75, 0,85)
+\end{itemize}
+
+\section{Deneysel Kurulum}
+\label{sec:experiments}
+
+\subsection{Uygulama Detayları}
+
+Çerçeve aşağıdaki özelliklerle PyTorch'ta uygulanmıştır:
+\begin{itemize}
+    \item Python 3.10+
+    \item torchvision ile PyTorch 2.1+
+    \item Metrikler için scikit-learn
+    \item Görselleştirme için matplotlib/seaborn
+\end{itemize}
+
+\subsection{Temel Karşılaştırma}
+
+EfficientNet-V2-S yaklaşımımızı şunlarla karşılaştırıyoruz:
+\begin{enumerate}
+    \item ResNet-50~\cite{he2016} (25,6M parametre)
+    \item EfficientNet-V2-S~\cite{tan2021} (21,5M parametre)
+\end{enumerate}
+
+Her iki model de adil karşılaştırma için aynı eğitim prosedürlerini kullanır.
+
+\subsection{Ablation Çalışması}
+
+Bireysel bileşenlerin katkısını inceliyoruz:
+\begin{itemize}
+    \item Focal Loss vs. BCE Loss
+    \item Ağırlıklı örnekleme vs. standart örnekleme
+    \item Veri artırma etkisi
+\end{itemize}
+
+\section{Beklenen Sonuçlar}
+\label{sec:results}
+
+\textbf{Not:} Deneysel değerlendirme şu anda devam etmektedir. Hem \textbf{ResNet-50} hem de \textbf{EfficientNet-V2-S} mimarileri adil karşılaştırma sağlamak için aynı deneysel protokolleri kullanarak ISIC 2020 veri setinde aktif olarak eğitilmekte ve değerlendirilmektedir.
+
+Kapsamlı performans metrikleri olan \textbf{AUC-ROC}, \textbf{Doğruluk}, \textbf{Duyarlılık (Recall)}, \textbf{Özgüllük} ve \textbf{F1-Skoru} tüm eğitim çalıştırmalarının tamamlanmasından sonra rapor edilecektir. Değerlendirme, klinik karar verme bağlamlarında duyarlılık ve özgüllük arasındaki dengenin değerlendirilmesi için çoklu karar eşiği analizlerini (\%50, \%75, \%85) içermektedir.
+
+Nihai nicel sonuçlar ve karşılaştırmalı analizler, eğitim prosedürlerinin tamamlanması ve istatistiksel doğrulamadan sonra bu belgeye dahil edilecektir.
+
+\section{Tartışma}
+\label{sec:discussion}
+
+\subsection{Klinik Etkiler}
+
+İkili sınıflandırma yaklaşımı, birincil kararın şüpheli bir lezyondan biyopsi yapıp yapmamak olduğu klinik iş akışlarıyla uyumludur. Yüksek duyarlılık, kaçırılan melanomları (yanlış negatifler) en aza indirmek için önceliklendirilir.
+
+\subsection{Sınırlamalar}
+
+\begin{itemize}
+    \item Tek merkezli veri seti genellenebilirliği sınırlayabilir
+    \item 256$\times$256 çözünürlük ince detayları kaybedebilir
+    \item İkili sınıflandırma melanom alt tipleri arasında ayrım yapmaz
+\end{itemize}
+
+\subsection{Gelecek Çalışma}
+
+Gelecek yönler şunları içerir:
+\begin{itemize}
+    \item Lezyon alt tiplerini dahil etmek için çok sınıflı genişletme
+    \item Hasta meta verilerinin entegrasyonu (yaş, cinsiyet, anatomik konum)
+    \item Yorumlanabilirlik için Grad-CAM görselleştirme
+    \item Bağımsız veri setlerinde harici doğrulama
+\end{itemize}
+
+\section{Sonuç}
+\label{sec:conclusion}
+
+Bu çalışma, EfficientNet-V2-S kullanarak ikili cilt lezyonu sınıflandırması için hesaplama açısından verimli bir derin öğrenme çerçevesi sunmaktadır. Focal loss optimizasyonu, sınıf ağırlıklı örnekleme ve çapraz platform donanım hızlandırma (hem NVIDIA CUDA hem de Apple Silicon MPS'yi destekleyerek) birleştirerek, aşırı sınıf dengesizliği ve çeşitli bilgi işlem ortamlarında dağıtım verimliliğinin kritik zorluklarını ele alıyoruz. Geliştirilen sistem, ön melanom taraması için klinik bir karar destek aracı olarak potansiyel göstermektedir.
+
+\newpage
+
+\begin{thebibliography}{99}
+
+\bibitem{esteva2017}
+Esteva, A., Kuprel, B., Novoa, R. A., Ko, J., Swetter, S. M., Blau, H. M., \& Thrun, S. (2017). Dermatologist-level classification of skin cancer with deep neural networks. \textit{Nature}, 542(7639), 115-118. \url{https://doi.org/10.1038/nature21056}
+
+\bibitem{haenssle2018}
+Haenssle, H. A., Fink, C., Schneiderbauer, R., Toberer, F., Buhl, T., Blum, A., Kalloo, A., Hassen, A. B. H., Thomas, L., Enk, A., \& Uhlmann, L. (2018). Man against machine: diagnostic performance of a deep learning convolutional neural network for dermoscopic melanoma recognition in comparison to 58 dermatologists. \textit{Annals of Oncology}, 29(8), 1836-1842. \url{https://doi.org/10.1093/annonc/mdy166}
+
+\bibitem{brinker2019}
+Brinker, T. J., Hekler, A., Enk, A. H., Berking, C., Haferkamp, S., Hauschild, A., Weichenthal, M., Klode, J., Schadendorf, D., Holland-Letz, T., von Kalle, C., Fröhling, S., Schilling, B., \& Utikal, J. S. (2019). Deep neural networks are superior to dermatologists in melanoma image classification. \textit{European Journal of Cancer}, 119, 11-17. \url{https://doi.org/10.1016/j.ejca.2019.05.023}
+
+\bibitem{tan2019}
+Tan, M., \& Le, Q. V. (2019). EfficientNet: Rethinking model scaling for convolutional neural networks. In \textit{Proceedings of the 36th International Conference on Machine Learning (ICML)}, 97, 6105-6114. PMLR. \url{http://proceedings.mlr.press/v97/tan19a.html}
+
+\bibitem{tan2021}
+Tan, M., \& Le, Q. V. (2021). EfficientNetV2: Smaller models and faster training. In \textit{Proceedings of the 38th International Conference on Machine Learning (ICML)}, 139, 10096-10106. PMLR. \url{https://proceedings.mlr.press/v139/tan21a.html}
+
+\bibitem{lin2017}
+Lin, T. Y., Goyal, P., Girshick, R., He, K., \& Dollár, P. (2017). Focal loss for dense object detection. In \textit{Proceedings of the IEEE International Conference on Computer Vision (ICCV)}, 2980-2988. \url{https://doi.org/10.1109/ICCV.2017.324}
+
+\bibitem{rotemberg2021}
+Rotemberg, V., Kurtansky, N., Betz-Stablein, B., Caffery, L., Chousakos, E., Codella, N., Combalia, M., Dusza, S., Guitera, P., Gutman, D., Halpern, A., Helba, B., Kittler, H., Kose, K., Langer, S., Lioprys, K., Malvehy, J., Musthaq, S., Nanda, J., Nova, R., Oxholm, P., Sarantopoulos, G., Shih, G., Torresani, L., Vemula, P., Weber, S., West, D. P., Soyer, H. P., Marchetti, M. A., \& Codella, N. C. F. (2021). A patient-centric dataset of images and metadata for identifying melanomas using clinical context. \textit{Scientific Data}, 8(1), 34. \url{https://doi.org/10.1038/s41597-021-00815-z}
+
+\bibitem{tschandl2018}
+Tschandl, P., Rosendahl, C., \& Kittler, H. (2018). The HAM10000 dataset, a large collection of multi-source dermatoscopic images of common pigmented skin lesions. \textit{Scientific Data}, 5(1), 180161. \url{https://doi.org/10.1038/sdata.2018.161}
+
+\bibitem{he2016}
+He, K., Zhang, X., Ren, S., \& Sun, J. (2016). Deep residual learning for image recognition. In \textit{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, 770-778. \url{https://doi.org/10.1109/CVPR.2016.90}
+
+\bibitem{deng2009}
+Deng, J., Dong, W., Socher, R., Li, L. J., Li, K., \& Fei-Fei, L. (2009). ImageNet: A large-scale hierarchical image database. In \textit{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, 248-255. \url{https://doi.org/10.1109/CVPR.2009.5206848}
+
+\bibitem{Codella2019}
+Codella, N. C. F., Rotemberg, V., Tschandl, P., Celebi, M. E., Dusza, S., Gutman, D., Helba, B., Kalloo, A., Liopyris, K., Marchetti, M., Kittler, H., \& Halpern, A. (2019). Skin lesion analysis toward melanoma detection 2019: A challenge hosted by the international skin imaging collaboration (ISIC). \textit{arXiv preprint arXiv:1902.03368}. \url{https://arxiv.org/abs/1902.03368}
+
+\bibitem{combalia2019}
+Combalia, M., Codella, N. C. F., Rotemberg, V., Helba, B., Vilaplana, V., Reiter, O., Carrera, C., Barreiro, A., Halpern, A. C., Puig, S., \& Malvehy, J. (2019). BCN20000: Dermoscopic lesions in the wild. \textit{arXiv preprint arXiv:1908.02288}. \url{https://arxiv.org/abs/1908.02288}
+
+\bibitem{kaggle2020}
+Deotte, C. (2020). JPEG melanoma 256$\times$256. Kaggle Dataset. \url{https://www.kaggle.com/datasets/cdeotte/jpeg-melanoma-256x256}
+
+\end{thebibliography}
+
+\end{document}

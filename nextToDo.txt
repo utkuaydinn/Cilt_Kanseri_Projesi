@@ -1,0 +1,16 @@
+çözünürlük arttırılmalı
+görüntü eksik, metadata da eklense çok iyi
+gradCam gibi bir modelle modelin bakıp da nasıl karar verdiği açıklanılsa daha iyi olur
+external validation lazım, başka datasetlerle de başarılı çalışırsa sadece başarılı olur
+
+2li sisteme geçtik çünkü: Klinik karara yardımcı olmak amacıyla, karmaşıklığı azaltıp doğruluğu artırmak için ikili sınıflandırmaya (İyi vs Kötü) odaklandık
+
+
+Şu haliyle sunarsan şu 3 noktadan "köşeye sıkıştırılabilirsin":
+
+"Hangi Veriye Bakıyoruz?" Sıkıştırması: Hoca: "Algoritman iyi ama sen bu resimlere baktın mı? Modelin hata payını etkileyen unsurlar ne?" Yapman Gereken: Sunumun bir slaytına "Data Augmentation" (Veri Artırma) sonucunda resimlerin nasıl değiştiğini (döndürme, renk değişimi) gösteren küçük bir görsel ekle. "Veriyi sadece okumadık, zorlaştırarak eğittik" demelisin.
+
+"Black-Box (Kara Kutu)" Eleştirisi: Hoca: "Model kanser diyor ama neden? Belki de resmin köşesindeki siyah çerçeveye bakıp kanser diyor?" Yapman Gereken: Eğer vaktin kalırsa Grad-CAM (Isı haritası) kısmını en azından 1-2 örnek için sunumuna koymalısın. "Modelin gerçekten lezyona odaklandığını doğruladım" demek, yüksek lisans seviyesindeki bir projeyi "bitirme projesi" seviyesinden ayırır.
+
+Metadata (Klinik Veri) Eksikliği: Hoca: "Tıp dünyasında sadece fotoğrafla karar verilmez. Yaş ve cinsiyet nerede?" Yapman Gereken: Bunu şu an yapmana vaktin yoksa bile, "Gelecek Planları" (Future Work) slaytında en başa koyup, "Klinik veri entegrasyonu (Metadata Fusion) bir sonraki fazımızdır" diyerek bu açığı kapatmalısın.
+

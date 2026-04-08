@@ -1,0 +1,351 @@
+\documentclass[12pt,a4paper]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{cite}
+\usepackage{setspace}
+\usepackage{url}
+
+% Page settings
+\geometry{margin=2.5cm}
+\onehalfspacing
+
+% Title information
+\title{\textbf{Binary Skin Lesion Classification Using EfficientNet-V2-S:}\\\textbf{A Transfer Learning Approach on ISIC 2020 Dataset}}
+\author{
+\textbf{Utku Aydın}\\
+Student ID: 6053037\\
+6053037@bakircay.edu.tr\\
+\\
+\textbf{Utku Disci}\\
+Student ID: 6053041\\
+6053041@bakircay.edu.tr\\
+\\
+\textbf{Advisor:}\\
+Dr. Öğr. Üyesi Nihan Özbaltan\\
+Department of Computer Engineering\\
+\\
+İzmir Bakırçay University\\
+Faculty of Engineering and Architecture\\
+Department of Computer Engineering\\
+Artificial Intelligence and Deep Learning Course
+}
+\date{February 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent\textbf{Keywords:} Skin lesion classification, melanoma detection, dermoscopy, convolutional neural networks, transfer learning, ISIC 2020 dataset, binary classification, focal loss, class imbalance
+
+\vspace{0.5cm}
+
+Skin cancer represents a significant global health burden, with melanoma being particularly aggressive due to its metastatic potential. Early diagnosis dramatically improves survival rates---approximately 99\% when detected early versus only 20\% in advanced stages---making accurate classification systems essential.
+
+This study presents a deep learning framework for automated \textbf{binary skin lesion classification} using dermoscopic images. We utilize the ISIC 2020 Challenge Dataset (JPEG Melanoma 256$\times$256) containing 33,126 images across two diagnostic categories: benign and malignant (melanoma). The dataset exhibits severe class imbalance, with benign lesions constituting approximately 98.2\% of samples while malignant melanomas represent only 1.8\%.
+
+To address these challenges, we employ transfer learning with \textbf{EfficientNet-V2-S} architecture pretrained on ImageNet, combined with \textbf{focal loss optimization} and \textbf{class-weighted random sampling}. Our approach leverages Apple Silicon GPU acceleration (Metal Performance Shaders) for efficient training on resource-constrained devices. The developed system shows potential as a clinical decision support tool, enabling efficient preliminary screening and reducing diagnostic variability in dermatological practice.
+\end{abstract}
+
+\newpage
+
+\section{Introduction}
+
+\subsection{General Introduction to the Topic}
+
+Skin cancer is one of the most prevalent malignancies worldwide, with incidence rates continuing to rise across diverse populations. Among various types, melanoma stands out as particularly dangerous due to its tendency to metastasize to distant organs. The prognosis differs dramatically based on detection timing: early-stage melanoma has a five-year survival rate of approximately 99\%, whereas late-stage disease with metastasis drops to around 20\%~\cite{esteva2017}.
+
+Currently, dermatologists primarily diagnose skin cancer through visual examination of pigmented lesions using the ABCD criteria (asymmetry, border irregularity, color variation, diameter). However, this approach is inherently subjective and prone to considerable inter-observer variability, even among experienced clinicians. These limitations have motivated increasing research into automated diagnostic systems that can provide more objective and consistent assessments.
+
+\subsection{Literature Review}
+
+Deep learning methods have gained substantial attention for skin lesion analysis in recent years. In a landmark study published in \textit{Nature}, Esteva et al.~\cite{esteva2017} demonstrated that a single CNN trained end-to-end on dermoscopic images could achieve dermatologist-level classification accuracy across 757 classes of skin conditions. Their model performed comparably to 21 board-certified dermatologists in binary classification tasks.
+
+Subsequently, Haenssle et al.~\cite{haenssle2018} conducted a prospective reader study comparing a CNN against 58 dermatologists. The deep learning system achieved superior specificity (82.5\%) compared to both less experienced (71.3\%, $p < 0.01$) and more experienced (75.7\%, $p < 0.01$) dermatologists. In a comprehensive systematic review, Brinker et al.~\cite{brinker2019} analyzed CNN-based skin lesion classification research, finding consistent patterns of superior or equivalent performance compared to human experts.
+
+Recent advances have focused on architectural improvements. Tan and Le~\cite{tan2019} introduced EfficientNet, which employs compound scaling to uniformly adjust network depth, width, and resolution. The subsequent EfficientNet-V2~\cite{tan2021} further improved training speed and parameter efficiency through progressive learning and neural architecture search optimized for training speed. In parallel, Lin et al.~\cite{lin2017} proposed Focal Loss, which addresses class imbalance by down-weighting easy examples and focusing on hard, misclassified samples---a technique particularly relevant for medical datasets with severe class imbalance.
+
+\subsection{Research Problem and Gap}
+
+Despite promising advances, several critical challenges hinder widespread clinical adoption of these technologies:
+
+\begin{enumerate}
+    \item \textbf{Severe Class Imbalance:} In the ISIC 2020 dataset, benign lesions comprise over 98\% of all images, while malignant melanomas account for less than 2\%. This extreme imbalance creates substantial difficulties for standard deep learning optimization strategies.
+    
+    \item \textbf{Computational Efficiency:} Many state-of-the-art models require significant computational resources, limiting deployment in clinical settings with resource-constrained environments.
+    
+    \item \textbf{Edge Deployment:} There is limited research on optimizing dermatological AI systems for Apple Silicon architectures (M1/M2/M3), which offer unified memory architecture advantageous for medical imaging tasks.
+\end{enumerate}
+
+\subsection{Proposed System Overview}
+
+This study presents a comprehensive deep learning framework designed to address these challenges in \textbf{binary skin lesion classification} (benign vs. malignant). Our system integrates:
+
+\begin{itemize}
+    \item \textbf{EfficientNet-V2-S} architecture with ImageNet pretraining
+    \item \textbf{Focal Loss} optimization ($\alpha=0.85$, $\gamma=2.0$) to address class imbalance
+    \item \textbf{Weighted Random Sampling} for balanced mini-batch generation
+    \item \textbf{Metal Performance Shaders (MPS)} support for Apple Silicon GPU acceleration
+    \item Strategic \textbf{data augmentation} (rotation, flipping, color jittering)
+\end{itemize}
+
+\subsection{Technical Infrastructure}
+
+\textbf{EfficientNet-V2-S} employs a training-aware neural architecture search that optimizes both accuracy and training speed. Key innovations include:
+\begin{itemize}
+    \item Use of depthwise convolutions with squeeze-and-excitation optimization
+    \item Progressive learning strategy that gradually increases image size during training
+    \item Only 21 million parameters (20\% smaller than ResNet-50) with superior accuracy
+\end{itemize}
+
+\textbf{Cross-Platform Hardware Acceleration:} The framework is designed for maximum hardware flexibility and efficient deployment across diverse computing environments:
+\begin{itemize}
+    \item \textbf{Apple Silicon (MPS):} Native Metal Performance Shaders support for M1/M2/M3 architectures with unified memory architecture
+    \item \textbf{NVIDIA GPU (CUDA):} Full CUDA compatibility for Windows and Linux systems, enabling hardware acceleration on discrete GPUs (e.g., NVIDIA GTX 3050, RTX series)
+    \item \textbf{Automatic Device Selection:} Intelligent fallback mechanism automatically selects optimal backend (CUDA $\rightarrow$ MPS $\rightarrow$ CPU) based on available hardware
+\end{itemize}
+
+This dual-platform support ensures the system can leverage hardware acceleration on both Mac-based systems (via MPS) and Windows/Linux workstations equipped with NVIDIA GPUs, making it accessible for diverse clinical and research environments.
+
+\textbf{Focal Loss} addresses class imbalance by down-weighting easy examples and focusing on hard, misclassified samples:
+\begin{equation}
+    FL(p_t) = -\alpha_t (1 - p_t)^\gamma \log(p_t)
+\end{equation}
+where $\alpha_t$ balances positive/negative examples and $\gamma$ controls the focusing parameter.
+
+\subsection{Original Contribution}
+
+This research makes three primary contributions:
+
+\begin{enumerate}
+    \item Implementation of \textbf{EfficientNet-V2-S} specifically optimized for binary melanoma detection with extreme class imbalance (98:2 ratio).
+    
+    \item Integration of \textbf{Apple Silicon GPU acceleration (MPS)} for dermatological AI, demonstrating efficient training on fanless systems.
+    
+    \item Comprehensive evaluation using \textbf{multiple decision thresholds} (50\%, 75\%, 85\%) to analyze the trade-off between sensitivity and specificity in clinical contexts.
+\end{enumerate}
+
+\subsection{Paper Structure Overview}
+
+The remainder of this paper is organized as follows: Section~\ref{sec:dataset} describes the dataset characteristics and preprocessing. Section~\ref{sec:methodology} details the proposed architecture and training strategies. Section~\ref{sec:experiments} presents the experimental setup and evaluation protocols. Section~\ref{sec:results} presents experimental results. Section~\ref{sec:discussion} discusses findings and limitations. Finally, Section~\ref{sec:conclusion} concludes with key findings.
+
+\section{Dataset Description}
+\label{sec:dataset}
+
+\subsection{ISIC 2020 Challenge Dataset}
+
+This study utilizes the \textbf{ISIC 2020 Challenge Dataset}~\cite{rotemberg2021}, publicly available from the International Skin Imaging Collaboration (ISIC). The dataset was compiled for the 2020 skin lesion classification challenge and represents the largest publicly available collection of dermoscopic images specifically designed for binary melanoma detection.
+
+The dataset contains \textbf{33,126 dermoscopic images} distributed across two diagnostic categories:
+\begin{itemize}
+    \item \textbf{Benign Lesions} ($\sim$98.2\%): Including melanocytic nevi, seborrheic keratosis, and other non-malignant conditions
+    \item \textbf{Malignant Melanoma} ($\sim$1.8\%): Malignant tumors of melanocytes with high metastatic potential
+\end{itemize}
+
+The dataset aggregates data from multiple established repositories including HAM10000~\cite{tschandl2018}, BCN20000, and additional clinical sources. Images are provided in \textbf{256$\times$256 pixel JPEG format}, preprocessed and resized from original high-resolution dermoscopic captures.
+
+\subsection{Class Distribution and Imbalance}
+
+A significant challenge of this dataset is \textbf{extreme class imbalance}:
+\begin{itemize}
+    \item Benign: $\sim$32,500 images (98.2\%)
+    \item Malignant: $\sim$600 images (1.8\%)
+\end{itemize}
+
+This 54:1 ratio presents substantial challenges for model training, as standard optimization procedures tend to bias toward the majority class while underperforming on the clinically critical minority class (melanoma).
+
+\subsection{Data Preprocessing}
+
+All images undergo standardized preprocessing:
+\begin{enumerate}
+    \item \textbf{Resizing:} All images are standardized to 224$\times$224 pixels for model input
+    \item \textbf{Normalization:} ImageNet statistics (mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    \item \textbf{Augmentation:} Random horizontal/vertical flip, rotation ($\pm$20°), color jittering
+\end{enumerate}
+
+\subsection{Dataset Splitting}
+
+The dataset is partitioned using \textbf{stratified sampling} to maintain class distribution proportions:
+\begin{itemize}
+    \item Training: 80\%
+    \item Validation: 20\%
+\end{itemize}
+
+This stratified approach ensures each subset contains representative samples from both categories, facilitating reliable model evaluation.
+
+\subsection{Ethical Considerations}
+
+The ISIC 2020 Challenge Dataset is publicly available at \url{https://challenge.isic-archive.com} and distributed under terms appropriate for academic research. The dataset has been de-identified to protect patient privacy in accordance with ethical guidelines for medical image sharing.
+
+\section{Methodology}
+\label{sec:methodology}
+
+\subsection{Model Architecture: EfficientNet-V2-S}
+
+We employ \textbf{EfficientNet-V2-S} (Small) as our backbone architecture. This model represents an evolution from the original EfficientNet, incorporating:
+\begin{itemize}
+    \item Training-aware NAS (Neural Architecture Search) optimizing both accuracy and training speed
+    \item Progressive learning with adaptive regularization
+    \item 21.5 million parameters (compact yet powerful)
+\end{itemize}
+
+The final classification layer is modified for binary output with single neuron and sigmoid activation.
+
+\subsection{Class Imbalance Handling}
+
+\subsubsection{Focal Loss}
+We replace standard BCE loss with Focal Loss to focus on hard examples:
+\begin{equation}
+    \mathcal{L}_{FL} = -\alpha_t (1 - p_t)^\gamma \log(p_t)
+\end{equation}
+with hyperparameters $\alpha=0.85$ (positive class weight) and $\gamma=2.0$ (focusing parameter).
+
+\subsubsection{Weighted Random Sampling}
+We implement PyTorch's \texttt{WeightedRandomSampler} to ensure balanced mini-batches during training, where each benign sample receives weight $1/n_{benign}$ and each malignant sample receives $1/n_{malignant}$.
+
+\subsection{Training Configuration}
+
+\begin{itemize}
+    \item \textbf{Optimizer:} AdamW with weight decay $10^{-4}$
+    \item \textbf{Learning Rate:} $10^{-4}$ (constant)
+    \item \textbf{Batch Size:} 32
+    \item \textbf{Epochs:} 30 with early stopping (patience based on validation AUC)
+    \item \textbf{Hardware:} Apple Silicon M3 with MPS acceleration (fallback to CPU)
+\end{itemize}
+
+\subsection{Evaluation Metrics}
+
+We employ clinically relevant metrics:
+\begin{itemize}
+    \item \textbf{AUC-ROC:} Area Under Receiver Operating Characteristic curve
+    \item \textbf{Sensitivity (Recall):} True positive rate for melanoma detection
+    \item \textbf{Specificity:} True negative rate for benign classification
+    \item \textbf{F1-Score:} Harmonic mean of precision and recall
+    \item \textbf{Confusion Matrix:} At multiple thresholds (0.5, 0.75, 0.85)
+\end{itemize}
+
+\section{Experimental Setup}
+\label{sec:experiments}
+
+\subsection{Implementation Details}
+
+The framework is implemented in PyTorch with the following specifications:
+\begin{itemize}
+    \item Python 3.10+
+    \item PyTorch 2.1+ with torchvision
+    \item scikit-learn for metrics
+    \item matplotlib/seaborn for visualization
+\end{itemize}
+
+\subsection{Baseline Comparison}
+
+We compare our EfficientNet-V2-S approach against:
+\begin{enumerate}
+    \item ResNet-50~\cite{he2016} (25.6M parameters)
+    \item EfficientNet-V2-S~\cite{tan2021} (21.5M parameters)
+\end{enumerate}
+
+Both models use identical training procedures for fair comparison.
+
+\subsection{Ablation Study}
+
+We investigate the contribution of individual components:
+\begin{itemize}
+    \item Focal Loss vs. BCE Loss
+    \item Weighted sampling vs. standard sampling
+    \item Data augmentation impact
+\end{itemize}
+
+\section{Expected Results}
+\label{sec:results}
+
+\textbf{Note:} Experimental evaluation is currently in progress. Both \textbf{ResNet-50} and \textbf{EfficientNet-V2-S} architectures are being actively trained and evaluated on the ISIC 2020 dataset using identical experimental protocols to ensure fair comparison.
+
+Comprehensive performance metrics including \textbf{AUC-ROC}, \textbf{Accuracy}, \textbf{Sensitivity (Recall)}, \textbf{Specificity}, and \textbf{F1-Score} will be reported upon completion of all training runs. The evaluation includes multiple decision threshold analyses (50\%, 75\%, 85\%) to assess the trade-off between sensitivity and specificity in clinical decision-making contexts.
+
+Final quantitative results and comparative analyses will be incorporated into this document following the completion of training procedures and statistical validation.
+
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Clinical Implications}
+
+The binary classification approach aligns with clinical workflows where the primary decision is whether to biopsy a suspicious lesion. High sensitivity is prioritized to minimize missed melanomas (false negatives).
+
+\subsection{Limitations}
+
+\begin{itemize}
+    \item Single-center dataset may limit generalizability
+    \item 256$\times$256 resolution may lose fine-grained details
+    \item Binary classification does not distinguish between melanoma subtypes
+\end{itemize}
+
+\subsection{Future Work}
+
+Future directions include:
+\begin{itemize}
+    \item Multi-class extension to include lesion subtypes
+    \item Integration of patient metadata (age, gender, anatomical location)
+    \item Grad-CAM visualization for interpretability
+    \item External validation on independent datasets
+\end{itemize}
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+This study presents a computationally efficient deep learning framework for binary skin lesion classification using EfficientNet-V2-S. By combining focal loss optimization, class-weighted sampling, and cross-platform hardware acceleration (supporting both NVIDIA CUDA and Apple Silicon MPS), we address the critical challenges of extreme class imbalance and deployment efficiency across diverse computing environments. The developed system demonstrates potential as a clinical decision support tool for preliminary melanoma screening.
+
+\newpage
+
+\begin{thebibliography}{99}
+
+\bibitem{esteva2017}
+Esteva, A., Kuprel, B., Novoa, R. A., Ko, J., Swetter, S. M., Blau, H. M., \& Thrun, S. (2017). Dermatologist-level classification of skin cancer with deep neural networks. \textit{Nature}, 542(7639), 115-118. \url{https://doi.org/10.1038/nature21056}
+
+\bibitem{haenssle2018}
+Haenssle, H. A., Fink, C., Schneiderbauer, R., Toberer, F., Buhl, T., Blum, A., Kalloo, A., Hassen, A. B. H., Thomas, L., Enk, A., \& Uhlmann, L. (2018). Man against machine: diagnostic performance of a deep learning convolutional neural network for dermoscopic melanoma recognition in comparison to 58 dermatologists. \textit{Annals of Oncology}, 29(8), 1836-1842. \url{https://doi.org/10.1093/annonc/mdy166}
+
+\bibitem{brinker2019}
+Brinker, T. J., Hekler, A., Enk, A. H., Berking, C., Haferkamp, S., Hauschild, A., Weichenthal, M., Klode, J., Schadendorf, D., Holland-Letz, T., von Kalle, C., Fröhling, S., Schilling, B., \& Utikal, J. S. (2019). Deep neural networks are superior to dermatologists in melanoma image classification. \textit{European Journal of Cancer}, 119, 11-17. \url{https://doi.org/10.1016/j.ejca.2019.05.023}
+
+\bibitem{tan2019}
+Tan, M., \& Le, Q. V. (2019). EfficientNet: Rethinking model scaling for convolutional neural networks. In \textit{Proceedings of the 36th International Conference on Machine Learning (ICML)}, 97, 6105-6114. PMLR. \url{http://proceedings.mlr.press/v97/tan19a.html}
+
+\bibitem{tan2021}
+Tan, M., \& Le, Q. V. (2021). EfficientNetV2: Smaller models and faster training. In \textit{Proceedings of the 38th International Conference on Machine Learning (ICML)}, 139, 10096-10106. PMLR. \url{https://proceedings.mlr.press/v139/tan21a.html}
+
+\bibitem{lin2017}
+Lin, T. Y., Goyal, P., Girshick, R., He, K., \& Dollár, P. (2017). Focal loss for dense object detection. In \textit{Proceedings of the IEEE International Conference on Computer Vision (ICCV)}, 2980-2988. \url{https://doi.org/10.1109/ICCV.2017.324}
+
+\bibitem{rotemberg2021}
+Rotemberg, V., Kurtansky, N., Betz-Stablein, B., Caffery, L., Chousakos, E., Codella, N., Combalia, M., Dusza, S., Guitera, P., Gutman, D., Halpern, A., Helba, B., Kittler, H., Kose, K., Langer, S., Lioprys, K., Malvehy, J., Musthaq, S., Nanda, J., Nova, R., Oxholm, P., Sarantopoulos, G., Shih, G., Torresani, L., Vemula, P., Weber, S., West, D. P., Soyer, H. P., Marchetti, M. A., \& Codella, N. C. F. (2021). A patient-centric dataset of images and metadata for identifying melanomas using clinical context. \textit{Scientific Data}, 8(1), 34. \url{https://doi.org/10.1038/s41597-021-00815-z}
+
+\bibitem{tschandl2018}
+Tschandl, P., Rosendahl, C., \& Kittler, H. (2018). The HAM10000 dataset, a large collection of multi-source dermatoscopic images of common pigmented skin lesions. \textit{Scientific Data}, 5(1), 180161. \url{https://doi.org/10.1038/sdata.2018.161}
+
+\bibitem{he2016}
+He, K., Zhang, X., Ren, S., \& Sun, J. (2016). Deep residual learning for image recognition. In \textit{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, 770-778. \url{https://doi.org/10.1109/CVPR.2016.90}
+
+\bibitem{deng2009}
+Deng, J., Dong, W., Socher, R., Li, L. J., Li, K., \& Fei-Fei, L. (2009). ImageNet: A large-scale hierarchical image database. In \textit{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, 248-255. \url{https://doi.org/10.1109/CVPR.2009.5206848}
+
+\bibitem{Codella2019}
+Codella, N. C. F., Rotemberg, V., Tschandl, P., Celebi, M. E., Dusza, S., Gutman, D., Helba, B., Kalloo, A., Liopyris, K., Marchetti, M., Kittler, H., \& Halpern, A. (2019). Skin lesion analysis toward melanoma detection 2019: A challenge hosted by the international skin imaging collaboration (ISIC). \textit{arXiv preprint arXiv:1902.03368}. \url{https://arxiv.org/abs/1902.03368}
+
+\bibitem{combalia2019}
+Combalia, M., Codella, N. C. F., Rotemberg, V., Helba, B., Vilaplana, V., Reiter, O., Carrera, C., Barreiro, A., Halpern, A. C., Puig, S., \& Malvehy, J. (2019). BCN20000: Dermoscopic lesions in the wild. \textit{arXiv preprint arXiv:1908.02288}. \url{https://arxiv.org/abs/1908.02288}
+
+\bibitem{kaggle2020}
+Deotte, C. (2020). JPEG melanoma 256$\times$256. Kaggle Dataset. \url{https://www.kaggle.com/datasets/cdeotte/jpeg-melanoma-256x256}
+
+\end{thebibliography}
+
+\end{document}
