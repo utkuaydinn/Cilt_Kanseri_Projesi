@@ -14,7 +14,7 @@ def main():
     parser.add_argument('--model', type=str, default='efficientnet', choices=['efficientnet', 'resnet'], 
                         help='Egitilecek model mimarisi')
     parser.add_argument('--batch', type=int, default=32, help='Batch size degeri')
-    parser.add_argument('--epochs', type=int, default=5, help='Epoch sayisi')
+    parser.add_argument('--epochs', type=int, default=30, help='Epoch sayisi')
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
     args = parser.parse_argument_list if hasattr(parser, 'parse_argument_list') else parser.parse_args()
 
@@ -47,6 +47,7 @@ def main():
 
     criterion = FocalLoss(alpha=0.85, gamma=2.0)
     optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3)
 
     print(f"Egitim Basliyor: {args.model} | Epochs: {args.epochs}")
     trained_model, history = train_model(
@@ -56,7 +57,8 @@ def main():
         criterion=criterion,
         optimizer=optimizer,
         device=device,
-        num_epochs=args.epochs
+        num_epochs=args.epochs,
+        scheduler=scheduler
     )
 
     model_save_path = os.path.join(run_dir, "best_model.pth")

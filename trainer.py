@@ -65,8 +65,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, n
                 
                 loop.set_postfix(loss=loss.item())
 
-            if phase == 'train' and scheduler is not None:
-                scheduler.step()
+
 
             epoch_loss = running_loss / len(dataloader.dataset)
             
@@ -93,6 +92,10 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, n
             if phase == 'val' and epoch_auc > best_val_auc:
                 best_val_auc = epoch_auc
                 best_model_wts = copy.deepcopy(model.state_dict())
+                
+        if scheduler is not None:
+            val_loss = history['val_loss'][-1]
+            scheduler.step(val_loss)
 
         epoch_end_time = time.time()
         epoch_duration = epoch_end_time - epoch_start_time
